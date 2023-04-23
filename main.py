@@ -2,6 +2,7 @@ from fastapi import FastAPI, status, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 from subprocess import Popen, PIPE
 import asyncio
+import psutil
 
 app = FastAPI()
 process = None
@@ -59,13 +60,31 @@ async def stop_process():
 
 @app.get("/api/test.sh")
 async def get_process_status():
+
     """
     Get status of process with name pn
     """
+
     global process
+
     if process is None or process.returncode is not None:
         return {"status": "Process is not running"}
-    return {"status": "Process is running"}
+
+    # Get process resource usage
+    process_id = process.pid
+    process_cpu_usage = psutil.Process(process_id).cpu_percent()
+    process_memory_usage = psutil.Process(process_id).memory_percent()
+
+    # Get process uptime
+    process_start_time = psutil.Process(process_id).create_time()
+    process_uptime = psutil.time.time() - process_start_time
+
+    return {
+        "status": "Process is running",
+        "uptime": process_uptime,
+        "cpu_usage": process_cpu_usage,
+        "memory_usage": process_memory_usage
+    }
 
 
 @app.get("/api/test.sh/result")
